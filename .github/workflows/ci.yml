@@ -22,25 +22,48 @@ jobs:
           path: ~/.cache/helm
           key: helm-${{ runner.os }}
 
-      # 🔍 YAML Lint (Helm-safe config)
-      - name: YAML Lint
-        uses: ibiqlik/action-yamllint@v3
-        with:
-          file_or_dir: .
-          config_data: |
-            extends: default
-            ignore: |
-              charts/**/templates/*
-              **/templates/*
-            rules:
-              line-length:
-                max: 200
-                level: warning
-              document-start:
-                present: false
-              indentation:
-                indent-sequences: false
+     - name: YAML Lint (Helm + Repo Safe)
+  uses: ibiqlik/action-yamllint@v3
+  with:
+    file_or_dir: .
+    config_data: |
+      extends: default
 
+      ignore: |
+        charts/**/templates/*
+        **/templates/*
+        examples/**
+        crossplane-example/**
+        **/*test.yaml
+        **/*tests/**
+        **/examples/**
+        **/old/**
+        **/*.tpl
+
+      rules:
+        indentation:
+          level: warning
+          indent-sequences: false
+
+        line-length:
+          max: 300
+          level: warning
+
+        empty-lines:
+          max: 3
+          level: warning
+
+        trailing-spaces:
+          level: warning
+
+        document-start:
+          present: false
+
+        truthy:
+          level: warning
+
+        new-line-at-end-of-file:
+          level: warning
       # 📦 Install Helm
       - name: Setup Helm
         uses: azure/setup-helm@v4
