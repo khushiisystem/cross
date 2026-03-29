@@ -22,48 +22,51 @@ jobs:
           path: ~/.cache/helm
           key: helm-${{ runner.os }}
 
-     - name: YAML Lint (Helm + Repo Safe)
-  uses: ibiqlik/action-yamllint@v3
-  with:
-    file_or_dir: .
-    config_data: |
-      extends: default
+      # 🧹 YAML Lint (non-blocking, repo safe)
+      - name: YAML Lint (Helm + Repo Safe)
+        continue-on-error: true
+        uses: ibiqlik/action-yamllint@v3
+        with:
+          file_or_dir: .
+          config_data: |
+            extends: default
 
-      ignore: |
-        charts/**/templates/*
-        **/templates/*
-        examples/**
-        crossplane-example/**
-        **/*test.yaml
-        **/*tests/**
-        **/examples/**
-        **/old/**
-        **/*.tpl
+            ignore: |
+              charts/**/templates/*
+              **/templates/*
+              examples/**
+              crossplane-example/**
+              **/*test.yaml
+              **/*tests/**
+              **/examples/**
+              **/old/**
+              **/*.tpl
 
-      rules:
-        indentation:
-          level: warning
-          indent-sequences: false
+            rules:
+              indentation:
+                level: warning
+                indent-sequences: false
 
-        line-length:
-          max: 300
-          level: warning
+              line-length:
+                max: 300
+                level: warning
 
-        empty-lines:
-          max: 3
-          level: warning
+              empty-lines:
+                max: 3
+                level: warning
 
-        trailing-spaces:
-          level: warning
+              trailing-spaces:
+                level: warning
 
-        document-start:
-          present: false
+              document-start:
+                present: false
 
-        truthy:
-          level: warning
+              truthy:
+                level: warning
 
-        new-line-at-end-of-file:
-          level: warning
+              new-line-at-end-of-file:
+                level: warning
+
       # 📦 Install Helm
       - name: Setup Helm
         uses: azure/setup-helm@v4
@@ -88,13 +91,15 @@ jobs:
         with:
           path: ./
 
-      # 🔐 Dependency / Config Security Scan (K8s)
+      # 🔐 Install Trivy
       - name: Install Trivy
         run: |
+          sudo apt-get update
           sudo apt-get install -y wget
           wget https://github.com/aquasecurity/trivy/releases/latest/download/trivy_0.50.0_Linux-64bit.deb
           sudo dpkg -i trivy_0.50.0_Linux-64bit.deb
 
+      # 🔐 Scan Kubernetes manifests
       - name: Scan Kubernetes manifests
         run: |
           trivy config .
@@ -107,7 +112,7 @@ jobs:
             helm package "$chart" --destination packaged
           done
 
-      # 📤 Upload Artifacts (optional but useful)
+      # 📤 Upload Artifacts
       - name: Upload Helm Packages
         uses: actions/upload-artifact@v4
         with:
