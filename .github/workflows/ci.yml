@@ -31,32 +31,15 @@ jobs:
           config_data: |
             extends: default
             ignore: |
-              charts/**/templates/*
               **/templates/*
-              examples/**
-              crossplane-example/**
-              **/*test.yaml
-              **/*tests/**
-              **/examples/**
-              **/old/**
               **/*.tpl
+              **/tests/**
+              **/examples/**
             rules:
               indentation:
                 level: warning
-                indent-sequences: false
               line-length:
                 max: 300
-                level: warning
-              empty-lines:
-                max: 3
-                level: warning
-              trailing-spaces:
-                level: warning
-              document-start:
-                present: false
-              truthy:
-                level: warning
-              new-line-at-end-of-file:
                 level: warning
 
       # 📦 Setup Helm
@@ -71,8 +54,8 @@ jobs:
       - name: Helm Template Render Test
         run: helm template test helm/crossview > /dev/null
 
-      # 📦 Helm Package (Single Chart)
-      - name: Helm Package Dry Run (crossview)
+      # 📦 Helm Package
+      - name: Helm Package
         run: |
           mkdir -p packaged
           helm package helm/crossview --destination packaged
@@ -83,7 +66,7 @@ jobs:
         with:
           path: ./
 
-      #Trivy Security Scan (Official)
+      # 🔐 Trivy Security Scan (Correct Way)
       - name: Run Trivy Scanner
         uses: aquasecurity/trivy-action@v0.20.0
         with:
@@ -91,18 +74,6 @@ jobs:
           scan-ref: .
           format: table
           exit-code: 0
-
-      # 🔐 Scan Kubernetes manifests
-      - name: Scan Kubernetes manifests
-        run: trivy config .
-
-      # 📦 Package All Charts (if multiple)
-      - name: Helm Package All Charts
-        run: |
-          mkdir -p packaged
-          for chart in charts/*; do
-            helm package "$chart" --destination packaged
-          done
 
       # 📤 Upload Artifacts
       - name: Upload Helm Packages
