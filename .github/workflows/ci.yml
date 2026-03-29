@@ -7,27 +7,86 @@ on:
 
 jobs:
   ci:
+    name: Lint, Validate & Security Scan
     runs-on: ubuntu-latest
 
     steps:
+      # 📥 Checkout Code
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      # 🔍 YAML Lint (important for Helm)
+      # ⚡ Cache Helm (speed optimization)
+      - name: Cache Helm
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/helm
+          key: helm-${{ runner.os }}
+
+      # 🔍 YAML Lint (Helm-safe config)
       - name: YAML Lint
         uses: ibiqlik/action-yamllint@v3
+        with:
+          file_or_dir: .
+          config_data: |
+            extends: default
+            ignore: |
+              charts/**/templates/*
+              **/templates/*
+            rules:
+              line-length:
+                max: 200
+                level: warning
+              document-start:
+                present: false
+              indentation:
+                indent-sequences: false
 
-      # 📦 Helm Lint
+      # 📦 Install Helm
       - name: Setup Helm
         uses: azure/setup-helm@v4
 
+      # 🔍 Helm Lint (REAL validation)
       - name: Helm Lint
-        run: helm lint charts/*
+        run: |
+          for chart in charts/*; do
+            helm lint "$chart"
+          done
 
-      # 🧪 Helm Template Test
-      - name: Helm Template Validation
-        run: helm template test charts/*
+      # 🧪 Helm Template Validation
+      - name: Helm Template Render Test
+        run: |
+          for chart in charts/*; do
+            helm template test "$chart" > /dev/null
+          done
 
-      # 🔐 Basic Security (optional)
-      - name: Scan for secrets
+      # 🔐 Security Scan - Secrets Detection
+      - name: Scan for Secrets
         uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./
+
+      # 🔐 Dependency / Config Security Scan (K8s)
+      - name: Install Trivy
+        run: |
+          sudo apt-get install -y wget
+          wget https://github.com/aquasecurity/trivy/releases/latest/download/trivy_0.50.0_Linux-64bit.deb
+          sudo dpkg -i trivy_0.50.0_Linux-64bit.deb
+
+      - name: Scan Kubernetes manifests
+        run: |
+          trivy config .
+
+      # 📦 Validate Chart Packaging
+      - name: Helm Package Dry Run
+        run: |
+          mkdir -p packaged
+          for chart in charts/*; do
+            helm package "$chart" --destination packaged
+          done
+
+      # 📤 Upload Artifacts (optional but useful)
+      - name: Upload Helm Packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: helm-packages
+          path: packaged/
