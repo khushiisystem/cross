@@ -83,13 +83,14 @@ jobs:
         with:
           path: ./
 
-      # 🔐 Install Trivy (latest)
-      - name: Install Trivy
-        run: |
-          sudo apt-get update -y
-          sudo apt-get install -y wget
-          wget https://github.com/aquasecurity/trivy/releases/latest/download/trivy_$(uname -s)_64bit.deb
-          sudo dpkg -i trivy_*_64bit.deb
+      #Trivy Security Scan (Official)
+      - name: Run Trivy Scanner
+        uses: aquasecurity/trivy-action@v0.20.0
+        with:
+          scan-type: config
+          scan-ref: .
+          format: table
+          exit-code: 0
 
       # 🔐 Scan Kubernetes manifests
       - name: Scan Kubernetes manifests
