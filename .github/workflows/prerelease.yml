@@ -1,0 +1,43 @@
+name: Pre-Release (RC)
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Enter RC version (e.g. v1.2.0-rc.1)"
+        required: true
+
+jobs:
+  prerelease:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate RC Version
+        run: |
+          if [[ ! "${{ github.event.inputs.version }}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+-rc\.[0-9]+$ ]]; then
+            echo "Invalid RC version format"
+            exit 1
+          fi
+
+      - name: Ensure Branch is pre-release
+        run: |
+          if [[ "${GITHUB_REF}" != "refs/heads/pre-release" ]]; then
+            echo "This must run from pre-release branch"
+            exit 1
+          fi
+
+      - name: Create Tag
+        run: |
+          git tag ${{ github.event.inputs.version }}
+          git push origin ${{ github.event.inputs.version }}
+
+      - name: Create GitHub Pre-Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.inputs.version }}
+          prerelease: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
