@@ -15,14 +15,14 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      # ⚡ Cache Helm (speed optimization)
+      # ⚡ Cache Helm
       - name: Cache Helm
         uses: actions/cache@v4
         with:
           path: ~/.cache/helm
           key: helm-${{ runner.os }}
 
-      # 🧹 YAML Lint (non-blocking, repo safe)
+      # 🧹 YAML Lint
       - name: YAML Lint (Helm + Repo Safe)
         continue-on-error: true
         uses: ibiqlik/action-yamllint@v3
@@ -30,7 +30,6 @@ jobs:
           file_or_dir: .
           config_data: |
             extends: default
-
             ignore: |
               charts/**/templates/*
               **/templates/*
@@ -41,71 +40,63 @@ jobs:
               **/examples/**
               **/old/**
               **/*.tpl
-
             rules:
               indentation:
                 level: warning
                 indent-sequences: false
-
               line-length:
                 max: 300
                 level: warning
-
               empty-lines:
                 max: 3
                 level: warning
-
               trailing-spaces:
                 level: warning
-
               document-start:
                 present: false
-
               truthy:
                 level: warning
-
               new-line-at-end-of-file:
                 level: warning
 
-      # 📦 Install Helm
+      # 📦 Setup Helm
       - name: Setup Helm
         uses: azure/setup-helm@v4
 
-      # 🔍 Helm Lint (REAL validation)
+      # 🔍 Helm Lint
       - name: Helm Lint
-        run: |
-          for chart in charts/*; do
-            helm lint "$chart"
-          done
+        run: helm lint helm/crossview
 
       # 🧪 Helm Template Validation
       - name: Helm Template Render Test
-        run: |
-          for chart in charts/*; do
-            helm template test "$chart" > /dev/null
-          done
+        run: helm template test helm/crossview > /dev/null
 
-      # 🔐 Security Scan - Secrets Detection
+      # 📦 Helm Package (Single Chart)
+      - name: Helm Package Dry Run (crossview)
+        run: |
+          mkdir -p packaged
+          helm package helm/crossview --destination packaged
+
+      # 🔐 Secret Scan
       - name: Scan for Secrets
-        uses: trufflesecurity/trufflehog@main
+        uses: trufflesecurity/trufflehog@v3.63.2
         with:
           path: ./
 
-      # 🔐 Install Trivy
+      # 🔐 Install Trivy (latest)
       - name: Install Trivy
         run: |
-          sudo apt-get update
+          sudo apt-get update -y
           sudo apt-get install -y wget
-          wget https://github.com/aquasecurity/trivy/releases/latest/download/trivy_0.50.0_Linux-64bit.deb
-          sudo dpkg -i trivy_0.50.0_Linux-64bit.deb
+          wget https://github.com/aquasecurity/trivy/releases/latest/download/trivy_$(uname -s)_64bit.deb
+          sudo dpkg -i trivy_*_64bit.deb
 
       # 🔐 Scan Kubernetes manifests
       - name: Scan Kubernetes manifests
-        run: |
-          trivy config .
+        run: trivy config .
 
-      # 📦 Validate Chart Packaging
-      - name: Helm Package Dry Run
+      # 📦 Package All Charts (if multiple)
+      - name: Helm Package All Charts
         run: |
           mkdir -p packaged
           for chart in charts/*; do
