@@ -13,34 +13,21 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      # Setup Go (adjust if needed)
-      - name: Setup Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: "1.22"
+      # 🔍 YAML Lint (important for Helm)
+      - name: YAML Lint
+        uses: ibiqlik/action-yamllint@v3
 
-      - name: Cache Go Modules
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cache/go-build
-            ~/go/pkg/mod
-          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+      # 📦 Helm Lint
+      - name: Setup Helm
+        uses: azure/setup-helm@v4
 
-      - name: Install Dependencies
-        run: go mod tidy
+      - name: Helm Lint
+        run: helm lint charts/*
 
-      - name: Lint
-        run: |
-          go vet ./...
-          go fmt ./...
+      # 🧪 Helm Template Test
+      - name: Helm Template Validation
+        run: helm template test charts/*
 
-      - name: Run Tests
-        run: go test ./... -v
-
-      - name: Security Scan (basic)
-        run: |
-          go list -json -deps ./... | grep -i "error" || true
-
-      - name: Build
-        run: go build ./...
+      # 🔐 Basic Security (optional)
+      - name: Scan for secrets
+        uses: trufflesecurity/trufflehog@main
