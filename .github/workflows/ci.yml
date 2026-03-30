@@ -9,11 +9,14 @@ jobs:
   ci:
     runs-on: ubuntu-latest
 
+    defaults:
+      run:
+        working-directory: ./crossview-go-server   # ✅ GLOBAL FIX
+
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      # Setup Go (adjust if needed)
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
@@ -25,7 +28,7 @@ jobs:
           path: |
             ~/.cache/go-build
             ~/go/pkg/mod
-          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          key: ${{ runner.os }}-go-${{ hashFiles('crossview-go-server/go.sum') }}
 
       - name: Install Dependencies
         run: go mod tidy
